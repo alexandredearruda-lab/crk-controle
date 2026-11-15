@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17493a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>CRK Controle</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--verde:#17493a;--verde-claro:#e8f1ed;--fundo:#f4f6f5;--texto:#14211c;--suave:#5f6f68;--borda:#e1e7e4;
+    --ok:#1f8a5b;--ok-bg:#e6f5ee;--erro:#c63d3d;--erro-bg:#fbeaea;--aviso:#b7791f;--aviso-bg:#fdf3e1;--azul:#2563a8;--azul-bg:#e8f0fa;--cinza:#eef1f0}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--fundo);color:var(--texto);font-size:15px}
+  header{background:var(--verde);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;position:sticky;top:0;z-index:5}
+  header .l1{display:flex;align-items:center;gap:10px}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  header small{color:#b9d3c8;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .chip{margin-left:auto;padding:5px 11px;border-radius:99px;font-size:12px;font-weight:700;background:rgba(255,255,255,.15);white-space:nowrap}
+  .chip.on{background:#d7f3e5;color:var(--ok)} .chip.off{background:#fbeaea;color:var(--erro)} .chip.run{background:#f6c344;color:#3d2c00}
+  main{padding:14px;max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding-bottom:40px}
+  .card{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:14px}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--suave);margin:0 0 10px;font-weight:700}
+  .acoes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  button{font-family:inherit;font-size:14px;font-weight:600;border-radius:11px;border:1px solid var(--borda);background:#fff;color:var(--texto);padding:13px 10px;cursor:pointer}
+  button:active{transform:scale(.98)} button:disabled{opacity:.4}
+  .b-prim{background:var(--verde);color:#fff;border:none}
+  .b-parar{background:var(--erro);color:#fff;border:none;grid-column:1/-1}
+  .etapa{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--borda)}
+  .etapa:last-child{border:none}
+  .etapa .n{width:26px;height:26px;border-radius:8px;background:var(--verde-claro);color:var(--verde);display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+  .etapa .t{flex:1;min-width:0} .etapa .t b{display:block;font-size:14px} .etapa .t span{font-size:12px;color:var(--suave);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .etapa button{padding:7px 10px;font-size:12px}
+  .badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap}
+  .ok{background:var(--ok-bg);color:var(--ok)} .er{background:var(--erro-bg);color:var(--erro)} .av{background:var(--aviso-bg);color:var(--aviso)}
+  .az{background:var(--azul-bg);color:var(--azul)} .ci{background:var(--cinza);color:var(--suave)}
+  .cmd{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--borda);font-size:13px}
+  .cmd:last-child{border:none} .cmd .q{flex:1} .cmd .q small{display:block;color:var(--suave);font-size:12px}
+  pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:13px;margin:0;line-height:1.45}
+  .console{background:#0f1a16;color:#cfe3da;font-family:Consolas,monospace;font-size:11px;border-radius:10px;padding:10px;max-height:300px;overflow:auto}
+  details summary{cursor:pointer;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--suave);list-style:none}
+  details summary::after{content:" ▾"} details[open] summary{margin-bottom:10px}
+  .login{max-width:360px;margin:60px auto;padding:20px}
+  .login input{width:100%;font-size:16px;padding:12px;border:1px solid var(--borda);border-radius:10px;margin:6px 0 12px}
+  .msg{font-size:13px;margin-top:8px;min-height:18px}
+  .aviso{background:var(--aviso-bg);color:#6b4a10;border-radius:10px;padding:10px 12px;font-size:13px}
+  .hist li{font-size:12px;color:var(--suave);padding:5px 0;border-bottom:1px solid var(--borda)} .hist{list-style:none;margin:0;padding:0}
+  .sair{background:none;border:none;color:#b9d3c8;font-size:12px;padding:4px;text-decoration:underline}
+</style>
+</head>
+<body>
+<div id="telaLogin" class="login" style="display:none">
+  <h1 style="color:var(--verde)">CRK Controle</h1>
+  <p style="color:var(--suave)">Entre com o seu e-mail e senha do app.</p>
+  <label>E-mail<input id="email" type="email" autocomplete="username"></label>
+  <label>Senha<input id="senha" type="password" autocomplete="current-password"></label>
+  <button class="b-prim" style="width:100%" onclick="entrar()">Entrar</button>
+  <div class="msg" id="msgLogin"></div>
+</div>
+
+<div id="telaApp" style="display:none">
+  <header>
+    <div class="l1">
+      <div><small>CRK Comércio de Bebidas</small><h1>Automação dos relatórios</h1></div>
+      <span class="chip" id="chip">…</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+      <small id="visto"></small><button class="sair" onclick="sair()">sair</button>
+    </div>
+  </header>
+  <main>
+    <div class="aviso" id="avisoOff" style="display:none">O PC não dá sinal de vida há alguns minutos (desligado, sem internet ou o ouvinte fechado). Comandos ficam na fila por até 10 min e depois expiram sem rodar.</div>
+
+    <section class="card">
+      <h2>Ações</h2>
+      <div class="acoes">
+        <button class="b-prim" onclick="comando('rodar',['bi','mc','at','ci','wa','sc'])">▶ Rodar tudo</button>
+        <button onclick="comando('pauta')">📋 Mandar pauta</button>
+        <button onclick="comando('email')">✉️ Enviar e-mails</button>
+        <button onclick="comando('reenviar_whatsapp')">🔁 Reenviar WhatsApp</button>
+        <button class="b-parar" id="btnParar" style="display:none" onclick="comando('parar')">■ Parar rodada</button>
+      </div>
+      <div class="msg" id="msgCmd"></div>
+    </section>
+
+    <section class="card"><h2>Comandos recentes</h2><div id="cmds"></div></section>
+    <section class="card"><h2>Etapas</h2><div id="etapas"></div></section>
+    <section class="card"><details id="detPauta"><summary>Pauta do dia</summary><pre id="pauta"></pre></details></section>
+    <section class="card"><details><summary>Agendamentos</summary><div id="agendas" style="font-size:13px"></div></details></section>
+    <section class="card"><details><summary>Últimas rodadas</summary><ul class="hist" id="hist"></ul></details></section>
+    <section class="card"><details><summary>Console do PC</summary><div class="console"><pre id="console"></pre></div></details></section>
+  </main>
+</div>
+
+<script>
+// Preenchidos na publicação (a anon key é pública por natureza: quem protege os dados é o login + as regras do banco)
+const SUPABASE_URL = "https://sgxinwkpwadqlshsowod.supabase.co";
+const SUPABASE_ANON = "sb_publishable_9zKxyYv5rL3U9vMxhxV0Rg_scV52_Qf";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const ETAPAS = [
+  ['bi','BI (Qlik)'],['mc','MasterCross'],['at','Atualizador'],['ci','CRK Intelligence'],['wa','WhatsApp'],
+  ['sc','SCRUM Forms'],['rt','Rotas Forms'],['gr','Roteiro de Rotas'],['ap','Governança (PPT)'],
+  ['pa','Planos de Ação (PPT)'],['em','E-mail (Outlook)']];
+const NOMES = Object.fromEntries([...ETAPAS,['pm','Mapa Térmico (COM23)'],['ph','Heishop (COM30)']]);
+const ACAO = {rodar:'Rodar', pauta:'Mandar pauta', email:'Enviar e-mails', parar:'Parar rodada', reenviar_whatsapp:'Reenviar WhatsApp'};
+const ST = {pendente:['ci','na fila'], executando:['az','rodando'], concluido:['ok','ok'], erro:['er','erro'], recusado:['av','recusado'], expirado:['ci','expirou']};
+let estado = null, online = false, ocupado = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hora = iso => iso ? new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+
+async function iniciar(){
+  const {data:{session}} = await sb.auth.getSession();
+  $('telaLogin').style.display = session ? 'none' : 'block';
+  $('telaApp').style.display = session ? 'block' : 'none';
+  if (session) { atualizar(); }
+}
+async function entrar(){
+  $('msgLogin').textContent = 'Entrando…';
+  const {error} = await sb.auth.signInWithPassword({email:$('email').value.trim(), password:$('senha').value});
+  $('msgLogin').textContent = error ? 'Não entrou: ' + error.message : '';
+  if (!error) iniciar();
+}
+async function sair(){ await sb.auth.signOut(); iniciar(); }
+
+function badgeEtapa(d, run){
+  if (run && run.status === 'rodando') return ['az','rodando'];
+  if (run && run.status === 'na fila') return ['ci','na fila'];
+  if (run && run.status === 'pulado') return ['av','pulado'];
+  if (!d || !d.log) return ['ci','sem registro'];
+  if (!d.terminou) return ['av','incompleto'];
+  const t = (d.itens||[]).length, ok = (d.itens||[]).filter(i=>i.ok).length;
+  if (t && ok === t) return ['ok','OK'];
+  if (t && ok === 0) return ['er','erro'];
+  return t ? ['av', `${ok}/${t}`] : ['ok','OK'];
+}
+
+function desenhar(e){
+  estado = e;
+  const idade = e ? (Date.now() - new Date(e.atualizado_em)) / 1000 : 1e9;
+  online = idade < 120;
+  ocupado = !!(e && e.rodando);
+  $('chip').className = 'chip ' + (!online ? 'off' : ocupado ? 'run' : 'on');
+  $('chip').textContent = !online ? '● PC offline' : ocupado ? '● Rodando' : '● PC online';
+  $('visto').textContent = e ? 'PC visto às ' + hora(e.atualizado_em) : 'PC ainda não deu sinal';
+  $('avisoOff').style.display = online ? 'none' : 'block';
+  $('btnParar').style.display = ocupado ? 'block' : 'none';
+  if (!e) return;
+  const run = e.rodada && !e.rodada.fim ? e.rodada.etapas : null;
+  $('etapas').innerHTML = ETAPAS.map(([id,nome],i) => {
+    const d = (e.etapas||{})[id] || {}, [c,t] = badgeEtapa(d, run && run[id]);
+    const resumo = d.resumo ? d.resumo.replace(/^RESUMO[^:]*:\s*/,'') : (d.quando ? '' : 'ainda não rodou');
+    return `<div class="etapa"><div class="n">${i+1}</div><div class="t"><b>${esc(nome)}</b><span>${d.quando?esc(d.quando)+' · ':''}${esc(resumo)}</span></div>
+      <span class="badge ${c}">${t}</span><button onclick="comando('rodar',['${id}'])">▶</button></div>`;
+  }).join('');
+  $('pauta').textContent = e.pauta || 'Ainda não tem pauta de hoje.';
+  $('hist').innerHTML = (e.historico||[]).map(l => `<li>${esc(l)}</li>`).join('') || '<li>Nenhuma rodada registrada.</li>';
+  $('console').textContent = (e.console||[]).join('\n');
+  const ag = e.agendas || {};
+  const txtAg = (n,a) => !a ? `${n}: —` : !a.existe ? `${n}: não agendado` :
+      `${n}: ${a.ativa ? 'ativo' : 'desligado'} · ${a.hora} · ${(a.dias||[]).join(', ')}${a.proxima ? ' · próxima ' + a.proxima : ''}`;
+  $('agendas').innerHTML = `<p>${esc(txtAg('Rodada', ag.rodada))}</p><p>${esc(txtAg('E-mail', ag.email))}</p><p style="color:var(--suave)">Para mudar, use o painel no PC (por enquanto).</p>`;
+}
+
+function desenharCmds(lista){
+  $('cmds').innerHTML = (lista||[]).map(c => {
+    const [cl,t] = ST[c.status] || ['ci',c.status];
+    const et = c.etapas && c.acao === 'rodar' ? ' · ' + c.etapas.map(x=>NOMES[x]||x).join(' → ') : '';
+    return `<div class="cmd"><span class="badge ${cl}">${t}</span><div class="q">${esc(ACAO[c.acao]||c.acao)}${esc(et)}
+      <small>${hora(c.criado_em)}${c.mensagem ? ' · ' + esc(c.mensagem) : ''}</small></div></div>`;
+  }).join('') || '<div style="color:var(--suave);font-size:13px">Nenhum comando ainda.</div>';
+}
+
+async function atualizar(){
+  const [{data:e, error:e1}, {data:c}] = await Promise.all([
+    sb.from('pc_estado').select('*').eq('id',1).maybeSingle(),
+    sb.from('comandos').select('*').order('id',{ascending:false}).limit(8)]);
+  if (e1 && /JWT|auth/i.test(e1.message)) { return sair(); }
+  desenhar(e); desenharCmds(c);
+}
+
+async function comando(acao, etapas){
+  let texto = ACAO[acao] + (etapas ? ': ' + etapas.map(x=>NOMES[x]||x).join(' → ') : '');
+  if (acao === 'email') texto += '\n\nVai ENVIAR os e-mails de verdade (o que já foi hoje não repete).';
+  if (acao === 'rodar' && etapas.includes('mc')) texto += '\n\nO MasterCross usa o mouse do PC: ninguém deve mexer nele até terminar.';
+  if (!online) texto += '\n\nATENÇÃO: o PC está offline. O comando expira em 10 min se ele não voltar.';
+  if (ocupado && acao !== 'parar') texto += '\n\nJá tem rodada em andamento: o PC vai recusar.';
+  if (!confirm(texto + '\n\nConfirmar?')) return;
+  const {error} = await sb.from('comandos').insert({acao, etapas: etapas || null});
+  $('msgCmd').textContent = error ? 'Não enviado: ' + error.message : 'Enviado para a fila. O PC pega em até 20 s.';
+  $('msgCmd').style.color = error ? 'var(--erro)' : 'var(--ok)';
+  atualizar();
+}
+
+sb.auth.onAuthStateChange(() => {});
+iniciar();
+setInterval(() => { if ($('telaApp').style.display === 'block' && !document.hidden) atualizar(); }, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && $('telaApp').style.display === 'block') atualizar(); });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
