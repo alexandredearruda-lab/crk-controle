@@ -48,6 +48,12 @@
   .msg{font-size:13px;margin-top:8px;min-height:18px}
   .aviso{background:var(--aviso-bg);color:#6b4a10;border-radius:10px;padding:10px 12px;font-size:13px}
   .hist li{font-size:12px;color:var(--suave);padding:5px 0;border-bottom:1px solid var(--borda)} .hist{list-style:none;margin:0;padding:0}
+  .ag{padding:10px 0;border-bottom:1px solid var(--borda)} .ag:last-child{border:none}
+  .ag .l{display:flex;align-items:center;gap:8px} .ag .l b{flex:1;font-size:14px}
+  .ag small{display:block;color:var(--suave);font-size:12px;margin-top:3px}
+  .ag .c{display:flex;gap:8px;margin-top:8px;align-items:center}
+  .ag input[type=time]{font-family:inherit;font-size:15px;padding:7px 8px;border:1px solid var(--borda);border-radius:9px}
+  .ag button{padding:7px 12px;font-size:13px}
   .sair{background:none;border:none;color:#b9d3c8;font-size:12px;padding:4px;text-decoration:underline}
 </style>
 </head>
@@ -89,7 +95,7 @@
     <section class="card"><h2>Comandos recentes</h2><div id="cmds"></div></section>
     <section class="card"><h2>Etapas</h2><div id="etapas"></div></section>
     <section class="card"><details id="detPauta"><summary>Pauta do dia</summary><pre id="pauta"></pre></details></section>
-    <section class="card"><details><summary>Agendamentos</summary><div id="agendas" style="font-size:13px"></div></details></section>
+    <section class="card"><h2>Agendamentos do PC</h2><div id="agendas"></div><div class="msg" id="msgAg"></div></section>
     <section class="card"><details><summary>Últimas rodadas</summary><ul class="hist" id="hist"></ul></details></section>
     <section class="card"><details><summary>Console do PC</summary><div class="console"><pre id="console"></pre></div></details></section>
   </main>
@@ -106,7 +112,7 @@ const ETAPAS = [
   ['sc','SCRUM Forms'],['rt','Rotas Forms'],['gr','Roteiro de Rotas'],['ap','Governança (PPT)'],
   ['pa','Planos de Ação (PPT)'],['em','E-mail (Outlook)']];
 const NOMES = Object.fromEntries([...ETAPAS,['pm','Mapa Térmico (COM23)'],['ph','Heishop (COM30)']]);
-const ACAO = {rodar:'Rodar', pauta:'Mandar pauta', email:'Enviar e-mails', parar:'Parar rodada', reenviar_whatsapp:'Reenviar WhatsApp'};
+const ACAO = {rodar:'Rodar', pauta:'Mandar pauta', email:'Enviar e-mails', parar:'Parar rodada', reenviar_whatsapp:'Reenviar WhatsApp', agenda:'Agendamento'};
 const ST = {pendente:['ci','na fila'], executando:['az','rodando'], concluido:['ok','ok'], erro:['er','erro'], recusado:['av','recusado'], expirado:['ci','expirou']};
 let estado = null, online = false, ocupado = false;
 
@@ -161,16 +167,59 @@ function desenhar(e){
   $('pauta').textContent = e.pauta || 'Ainda não tem pauta de hoje.';
   $('hist').innerHTML = (e.historico||[]).map(l => `<li>${esc(l)}</li>`).join('') || '<li>Nenhuma rodada registrada.</li>';
   $('console').textContent = (e.console||[]).join('\n');
-  const ag = e.agendas || {};
-  const txtAg = (n,a) => !a ? `${n}: —` : !a.existe ? `${n}: não agendado` :
-      `${n}: ${a.ativa ? 'ativo' : 'desligado'} · ${a.hora} · ${(a.dias||[]).join(', ')}${a.proxima ? ' · próxima ' + a.proxima : ''}`;
-  $('agendas').innerHTML = `<p>${esc(txtAg('Rodada', ag.rodada))}</p><p>${esc(txtAg('E-mail', ag.email))}</p><p style="color:var(--suave)">Para mudar, use o painel no PC (por enquanto).</p>`;
+  desenharAgendas(e.agendas || {});
+}
+
+let agDesenhada = '';
+function desenharAgendas(ag){
+  const ordem = ['rodada','pauta','email','ouvinte'];
+  const html = ordem.filter(k => ag[k]).map(k => {
+    const a = ag[k];
+    if (!a.existe) return `<div class="ag"><div class="l"><b>${esc(a.nome)}</b><span class="badge ci">não agendado</span></div></div>`;
+    const info = [a.quando, a.proxima ? 'próxima ' + a.proxima : (a.ativa ? '' : 'não vai rodar'),
+                  a.ultima ? 'última ' + a.ultima + (a.resultado ? ' (' + a.resultado + ')' : '') : '',
+                  a.bateria ? '' : 'só na tomada'].filter(Boolean).join(' · ');
+    let ctl = '';
+    if (!a.so_ver) {
+      ctl = `<div class="c">${a.muda_hora ? `<input type="time" id="h_${k}" value="${esc(a.hora||'')}"><button onclick="mudarHora('${k}')">Salvar horário</button>` : ''}
+        <button style="margin-left:auto" onclick="agenda('${k}','${a.ativa ? 'desligar' : 'ligar'}')">${a.ativa ? 'Desligar' : 'Ligar'}</button></div>`;
+    } else if (!a.ativa) {
+      ctl = `<div class="c"><button onclick="agenda('${k}','ligar')">Ligar</button></div>`;
+    }
+    return `<div class="ag"><div class="l"><b>${esc(a.nome)}</b><span class="badge ${a.ativa ? 'ok' : 'er'}">${a.ativa ? 'ligado' : 'desligado'}</span></div>
+      <small>${esc(info)}</small>${ctl}</div>`;
+  }).join('') || '<div style="color:var(--suave);font-size:13px">O PC ainda não mandou os agendamentos.</div>';
+  // não redesenha enquanto você está digitando um horário
+  if (html !== agDesenhada && !(document.activeElement && document.activeElement.type === 'time')) {
+    $('agendas').innerHTML = html; agDesenhada = html;
+  }
+}
+
+async function agenda(tarefa, operacao, hora){
+  const a = (estado && estado.agendas || {})[tarefa] || {};
+  let txt = operacao === 'horario' ? `${a.nome}: mudar o horário para ${hora}?` :
+            `${operacao === 'ligar' ? 'Ligar' : 'DESLIGAR'} "${a.nome}"?` +
+            (operacao === 'desligar' ? '\n\nEla não roda até você ligar de novo.' : '');
+  if (!online) txt += '\n\nATENÇÃO: o PC está offline. O pedido expira em 10 min se ele não voltar.';
+  if (!confirm(txt)) return;
+  const {error} = await sb.from('comandos').insert({acao: 'agenda', parametros: {tarefa, operacao, hora: hora || null}});
+  $('msgAg').textContent = error ? 'Não enviado: ' + error.message : 'Enviado. O PC aplica em até 20 s.';
+  $('msgAg').style.color = error ? 'var(--erro)' : 'var(--ok)';
+  atualizar();
+}
+function mudarHora(k){
+  const h = $('h_' + k).value;
+  if (!/^\d\d:\d\d$/.test(h)) { $('msgAg').textContent = 'Escolha um horário.'; return; }
+  document.activeElement && document.activeElement.blur();
+  agenda(k, 'horario', h);
 }
 
 function desenharCmds(lista){
   $('cmds').innerHTML = (lista||[]).map(c => {
     const [cl,t] = ST[c.status] || ['ci',c.status];
-    const et = c.etapas && c.acao === 'rodar' ? ' · ' + c.etapas.map(x=>NOMES[x]||x).join(' → ') : '';
+    const p = c.parametros || {};
+    const et = c.etapas && c.acao === 'rodar' ? ' · ' + c.etapas.map(x=>NOMES[x]||x).join(' → ') :
+               c.acao === 'agenda' ? ` · ${p.tarefa || ''} ${p.operacao === 'horario' ? '→ ' + p.hora : (p.operacao || '')}` : '';
     return `<div class="cmd"><span class="badge ${cl}">${t}</span><div class="q">${esc(ACAO[c.acao]||c.acao)}${esc(et)}
       <small>${hora(c.criado_em)}${c.mensagem ? ' · ' + esc(c.mensagem) : ''}</small></div></div>`;
   }).join('') || '<div style="color:var(--suave);font-size:13px">Nenhum comando ainda.</div>';
