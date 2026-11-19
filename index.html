@@ -55,6 +55,21 @@
   .ag input[type=time]{font-family:inherit;font-size:15px;padding:7px 8px;border:1px solid var(--borda);border-radius:9px}
   .ag button{padding:7px 12px;font-size:13px}
   .sair{background:none;border:none;color:#b9d3c8;font-size:12px;padding:4px;text-decoration:underline}
+  .abas{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+  .abas button{background:rgba(255,255,255,.12);color:#dcebe4;border:none;padding:8px 12px;font-size:13px;border-radius:99px;white-space:nowrap}
+  .abas button.on{background:#fff;color:var(--verde)}
+  .aba{display:none;flex-direction:column;gap:14px} .aba.on{display:flex}
+  textarea,select,input[type=text]{width:100%;font-family:inherit;font-size:16px;padding:10px;border:1px solid var(--borda);border-radius:10px;background:#fff;color:var(--texto)}
+  textarea{min-height:84px;resize:vertical}
+  .linha{display:flex;gap:8px;align-items:center;margin-top:10px} .linha>*{flex:1}
+  .ex{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px} .ex button{padding:6px 10px;font-size:12px;font-weight:500;border-radius:99px;background:var(--verde-claro);border:none;color:var(--verde)}
+  .res{margin-top:10px;border-radius:10px;padding:10px 12px;font-size:13px;white-space:pre-wrap;display:none}
+  .res.ok{display:block} .res.er{display:block} .res.az{display:block}
+  .item{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--borda);font-size:14px}
+  .item:last-child{border:none} .item .q{flex:1;min-width:0} .item small{display:block;color:var(--suave);font-size:12px}
+  .item button{padding:7px 11px;font-size:12px}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px} .kv span:nth-child(odd){color:var(--suave)}
+  .chk{display:flex;gap:8px;align-items:center;font-size:14px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -76,8 +91,13 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
       <small id="visto"></small><button class="sair" onclick="sair()">sair</button>
     </div>
+    <nav class="abas" id="abas">
+      <button data-a="inicio" class="on">Início</button><button data-a="rr">Relatórios rápidos</button>
+      <button data-a="ap">Apresentações</button><button data-a="mais">RV · Assessment</button>
+    </nav>
   </header>
   <main>
+  <div class="aba on" id="aba-inicio">
     <div class="aviso" id="avisoOff" style="display:none">O PC não dá sinal de vida há alguns minutos (desligado, sem internet ou o ouvinte fechado). Comandos ficam na fila por até 10 min e depois expiram sem rodar.</div>
 
     <section class="card">
@@ -98,6 +118,51 @@
     <section class="card"><h2>Agendamentos do PC</h2><div id="agendas"></div><div class="msg" id="msgAg"></div></section>
     <section class="card"><details><summary>Últimas rodadas</summary><ul class="hist" id="hist"></ul></details></section>
     <section class="card"><details><summary>Console do PC</summary><div class="console"><pre id="console"></pre></div></details></section>
+  </div>
+
+  <div class="aba" id="aba-rr">
+    <section class="card"><h2>Pedido</h2>
+      <textarea id="rrTexto" placeholder="Ex.: compradores de RGB dos últimos 3 meses que não compraram este mês, da Juliana"></textarea>
+      <div class="ex">
+        <button onclick="rrEx('compradores de RGB dos últimos 3 meses que não compraram este mês')">RGB 3 meses, sem compra no mês</button>
+        <button onclick="rrEx('comprou Heineken mês passado e não comprou este mês')">HNK mês passado, não este</button>
+        <button onclick="rrEx('quem caiu mais de 30% em RGB este mês')">Queda RGB &gt; 30%</button>
+        <button onclick="rrEx('clientes novos este mês')">Novos no mês</button>
+      </div>
+      <div class="linha"><select id="rrPara"></select></div>
+      <div class="linha"><button onclick="rrPrevia()">🔎 Prévia</button><button class="b-prim" onclick="rrGerar()">📊 Gerar Excel</button></div>
+      <div class="res" id="rrRes"></div>
+      <p style="font-size:12px;color:var(--suave);margin:10px 0 0">A prévia mostra só quantos PDVs e vendedores. O Excel sai do PC direto para o WhatsApp, como os relatórios das 5h.</p>
+    </section>
+    <section class="card"><h2>Favoritos</h2><div id="rrFav"></div></section>
+  </div>
+
+  <div class="aba" id="aba-ap">
+    <section class="card"><h2>Deck rápido de indicadores</h2>
+      <div style="font-size:13px;color:var(--suave)">Números do Mapa Gerencial, visual CRK.</div>
+      <input type="text" id="apTit" placeholder="Título (opcional)" style="margin-top:10px">
+      <label class="chk"><input type="checkbox" id="apEnviar" checked> Mandar no meu WhatsApp</label>
+      <div class="acoes" id="apSug" style="margin-top:10px"></div>
+      <div class="res" id="apRes"></div>
+    </section>
+    <section class="card"><h2>Automáticas</h2><div id="apAuto"></div></section>
+    <section class="card"><h2>Meus modelos</h2><div id="apMod"></div></section>
+    <section class="card"><details><summary>Últimas geradas</summary><div id="apRec"></div></details></section>
+  </div>
+
+  <div class="aba" id="aba-mais">
+    <section class="card"><h2>Resumo executivo</h2>
+      <div style="font-size:13px;color:var(--suave)">HL Total, RGB e faturamento do dia/acumulado no seu WhatsApp.</div>
+      <div class="linha"><button class="b-prim" onclick="comando('rodar',['re'])">📲 Mandar resumo agora</button></div></section>
+    <section class="card"><h2>Remuneração Variável</h2><div id="rvSt"></div>
+      <div class="linha"><button onclick="comando('rodar',['rv'])">🔄 Atualizar e validar</button><button onclick="rvPdfs()">📄 Gerar PDFs</button></div>
+      <div class="res" id="rvRes"></div>
+      <p style="font-size:12px;color:var(--suave);margin:10px 0 0">Os PDFs ficam só na pasta do PC (Comissão\PDFs). Nada é enviado para ninguém. Valores não aparecem aqui.</p></section>
+    <section class="card"><h2>Assessment</h2><div id="asSt"></div>
+      <label class="chk"><input type="checkbox" id="asExcel"> Atualizar também as ferramentas Excel</label>
+      <div class="linha"><button class="b-prim" onclick="assessment()">▶ Rodar Assessment do mês</button></div>
+      <div class="res" id="asRes"></div></section>
+  </div>
   </main>
 </div>
 
@@ -110,9 +175,10 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const ETAPAS = [
   ['bi','BI (Qlik)'],['mc','MasterCross'],['at','Atualizador'],['ci','CRK Intelligence'],['wa','WhatsApp'],
   ['sc','SCRUM Forms'],['rt','Rotas Forms'],['gr','Roteiro de Rotas'],['ap','Governança (PPT)'],
-  ['pa','Planos de Ação (PPT)'],['em','E-mail (Outlook)']];
-const NOMES = Object.fromEntries([...ETAPAS,['pm','Mapa Térmico (COM23)'],['ph','Heishop (COM30)']]);
-const ACAO = {rodar:'Rodar', pauta:'Mandar pauta', email:'Enviar e-mails', parar:'Parar rodada', reenviar_whatsapp:'Reenviar WhatsApp', agenda:'Agendamento'};
+  ['pa','Planos de Ação (PPT)'],['em','E-mail (Outlook)'],['re','Resumo executivo']];
+const NOMES = Object.fromEntries([...ETAPAS,['pm','Mapa Térmico (COM23)'],['ph','Heishop (COM30)'],['as','Assessment'],['rv','Remuneração Variável']]);
+const ACAO = {rodar:'Rodar', pauta:'Mandar pauta', email:'Enviar e-mails', parar:'Parar rodada', reenviar_whatsapp:'Reenviar WhatsApp', agenda:'Agendamento', tarefa:'Pedido'};
+const TAREFA = {rr_previa:'Prévia de relatório', rr_gerar:'Relatório rápido', deck:'Deck de indicadores', modelo:'Modelo de apresentação', rv_pdfs:'PDFs da RV', assessment:'Assessment'};
 const ST = {pendente:['ci','na fila'], executando:['az','rodando'], concluido:['ok','ok'], erro:['er','erro'], recusado:['av','recusado'], expirado:['ci','expirou']};
 let estado = null, online = false, ocupado = false;
 
@@ -168,11 +234,94 @@ function desenhar(e){
   $('hist').innerHTML = (e.historico||[]).map(l => `<li>${esc(l)}</li>`).join('') || '<li>Nenhuma rodada registrada.</li>';
   $('console').textContent = (e.console||[]).join('\n');
   desenharAgendas(e.agendas || {});
+  desenharExtras(e.extras);
 }
+
+// ------------------------------------------------ Fase 8: abas novas
+document.querySelectorAll('#abas button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#abas button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.aba').forEach(x => x.classList.toggle('on', x.id === 'aba-' + b.dataset.a));
+  window.scrollTo(0, 0);
+});
+const q = s => JSON.stringify(s).replace(/"/g, '&quot;');
+let extrasDesenhado = '';
+function desenharExtras(x){
+  const chave = JSON.stringify(x || null);
+  if (chave === extrasDesenhado) return;   // só redesenha quando muda (não apaga o que você está escrevendo)
+  extrasDesenhado = chave;
+  if (!x) {
+    const m = '<div style="color:var(--suave);font-size:13px">O PC ainda não mandou estas informações. Se durar mais de 5 min, falta rodar o SQL da Fase 8 no Supabase ou reiniciar o ouvinte.</div>';
+    ['rrFav','apAuto','apMod','rvSt','asSt'].forEach(id => $(id).innerHTML = m);
+    return;
+  }
+  const sel = $('rrPara').value;
+  $('rrPara').innerHTML = '<option value="eu">Mandar no meu WhatsApp</option>' +
+    (x.contatos||[]).map(c => `<option value="${esc(c)}">Mandar para ${esc(c)}</option>`).join('') +
+    '<option value="">Só salvar no PC</option>';
+  if ($('rrPara').dataset.ok && [...$('rrPara').options].some(o => o.value === sel)) $('rrPara').value = sel;
+  $('rrPara').dataset.ok = '1';
+  $('rrFav').innerHTML = (x.rr_favoritos||[]).map(f => `<div class="item"><div class="q">⭐ ${esc(f)}</div><button onclick="rrFav(${q(f)})">Gerar</button></div>`).join('')
+    || '<div style="color:var(--suave);font-size:13px">Nenhum favorito. Salve pelo painel do PC (Relatórios Rápidos ▸ ☆ Favoritar).</div>';
+  $('apSug').innerHTML = Object.entries(x.ap_sugestoes||{}).map(([k,n]) => `<button onclick="deck('${k}')">🎞 ${esc(n)}</button>`).join('');
+  $('apAuto').innerHTML = (x.ap_automaticas||[]).map(a => `<div class="item"><div class="q"><b>${esc(a.nome)}</b><small>${esc(a.mes)}${a.ultimo ? ' · último ' + esc(a.ultimo) : ''}</small></div><button onclick="comando('rodar',['${a.id}'])">▶</button></div>`).join('')
+    || `<div style="color:var(--suave);font-size:13px">${esc(x.ap_erro || 'Nada.')}</div>`;
+  $('apMod').innerHTML = (x.ap_modelos||[]).map(m => `<div class="item"><div class="q">${esc(m)}</div><button onclick="modelo(${q(m)})">Preencher</button></div>`).join('')
+    || '<div style="color:var(--suave);font-size:13px">Nenhum modelo com campos {{ }}. Suba pelo painel do PC (Apresentações ▸ Biblioteca).</div>';
+  $('apRec').innerHTML = (x.ap_recentes||[]).map(f => `<div class="item"><div class="q">${esc(f.nome)}<small>${esc(f.quando)}</small></div></div>`).join('') || '<div style="color:var(--suave);font-size:13px">Nenhuma ainda.</div>';
+  const rv = x.rv || {};
+  const kv = l => '<div class="kv">' + l.filter(([,v]) => v !== null && v !== undefined && v !== '').map(([k,v]) => `<span>${esc(k)}</span><span>${esc(v)}</span>`).join('') + '</div>';
+  $('rvSt').innerHTML = rv.competencia || rv.erro ? kv([['Competência', rv.competencia], ['Validador', rv.situacao],
+      ['Erros', rv.erros], ['Atenções', rv.atencoes], ['Pessoas', rv.pessoas], ['Atualizado', rv.atualizado ? hora(rv.atualizado) : null],
+      ['PDFs', rv.pdfs != null ? rv.pdfs + (rv.pdfs_em ? ' · ' + hora(rv.pdfs_em) : '') : null], ['Erro', rv.erro]])
+    : '<div style="color:var(--suave);font-size:13px">Ainda não rodou.</div>';
+  const as = x.assessment || {};
+  $('asSt').innerHTML = as.quando || as.erro ? kv([['Última', as.quando], ['Mês', as.mes], ['Arquivos gerados', as.gerados],
+      ['Conferência', as.conferencia_ok === true ? 'OK' : as.conferencia_ok === false ? 'com diferenças' : null],
+      ['Avisos', (as.avisos||[]).length || null], ['Erro', as.erro]])
+    : '<div style="color:var(--suave);font-size:13px">Ainda não rodou.</div>';
+}
+
+// pedido ao PC e espera o resultado (o PC devolve só um texto curto)
+async function tarefa(parametros, caixa, aviso){
+  let txt = aviso || TAREFA[parametros.tipo];
+  if (!online) txt += '\n\nATENÇÃO: o PC está offline. O pedido expira em 10 min se ele não voltar.';
+  if (ocupado) txt += '\n\nTem rodada em andamento: o PC vai recusar.';
+  if (!confirm(txt + '\n\nConfirmar?')) return;
+  const box = $(caixa);
+  box.className = 'res az'; box.style.background = 'var(--azul-bg)'; box.style.color = 'var(--azul)';
+  box.textContent = 'Enviado. Aguardando o PC…';
+  const {data, error} = await sb.from('comandos').insert({acao: 'tarefa', parametros}).select('id').single();
+  if (error) { mostrar(box, false, 'Não enviado: ' + error.message); return; }
+  atualizar();
+  const id = data.id, t0 = Date.now();
+  const passo = async () => {
+    const {data: c} = await sb.from('comandos').select('status,mensagem').eq('id', id).maybeSingle();
+    if (c && !['pendente','executando'].includes(c.status)) return mostrar(box, c.status === 'concluido', c.mensagem || c.status);
+    if (c) box.textContent = c.status === 'executando' ? 'O PC está fazendo…' : 'Na fila do PC…';
+    if (Date.now() - t0 > 12 * 60000) return mostrar(box, false, 'Sem resposta do PC. Veja em Comandos recentes.');
+    setTimeout(passo, 3000);
+  };
+  setTimeout(passo, 3000);
+}
+function mostrar(box, ok, msg){
+  box.className = 'res ' + (ok ? 'ok' : 'er');
+  box.style.background = ok ? 'var(--ok-bg)' : 'var(--erro-bg)'; box.style.color = ok ? '#14532d' : 'var(--erro)';
+  box.textContent = (ok ? '✔ ' : '✖ ') + msg; atualizar();
+}
+function rrEx(t){ $('rrTexto').value = t; $('rrTexto').focus(); }
+function rrPrevia(){ tarefa({tipo:'rr_previa', texto:$('rrTexto').value}, 'rrRes', 'Prévia do relatório (só a contagem)'); }
+function paraTxt(){ const p = $('rrPara').value; return p === 'eu' ? 'no seu WhatsApp' : p ? 'para ' + p : 'só salvo no PC'; }
+function rrGerar(){ tarefa({tipo:'rr_gerar', texto:$('rrTexto').value, para:$('rrPara').value || null}, 'rrRes', 'Gerar o Excel e mandar ' + paraTxt()); }
+function rrFav(f){ tarefa({tipo:'rr_gerar', favorito:f, para:$('rrPara').value || null}, 'rrRes', `Favorito "${f}": gerar e mandar ` + paraTxt()); }
+function deck(k){ const n = (estado.extras.ap_sugestoes||{})[k];
+  tarefa({tipo:'deck', sugestao:k, titulo:$('apTit').value, enviar:$('apEnviar').checked}, 'apRes', `Deck "${n}"` + ($('apEnviar').checked ? ' (vai no seu WhatsApp)' : ' (fica no PC)')); }
+function modelo(m){ tarefa({tipo:'modelo', arquivo:m, enviar:$('apEnviar').checked}, 'apRes', `Preencher "${m}" com os números de hoje` + ($('apEnviar').checked ? ' e mandar no seu WhatsApp' : '')); }
+function rvPdfs(){ tarefa({tipo:'rv_pdfs'}, 'rvRes', 'Gerar os PDFs individuais da RV.\nEles ficam SÓ na pasta do PC, nada é enviado.\nSe o validador tiver erro, o PC não gera.'); }
+function assessment(){ tarefa({tipo:'assessment', excel:$('asExcel').checked}, 'asRes', 'Rodar o Assessment do mês' + ($('asExcel').checked ? ' + ferramentas Excel' : '')); }
 
 let agDesenhada = '';
 function desenharAgendas(ag){
-  const ordem = ['rodada','pauta','email','ouvinte'];
+  const ordem = ['rodada','pauta','email','assessment','rv','ouvinte'];
   const html = ordem.filter(k => ag[k]).map(k => {
     const a = ag[k];
     if (!a.existe) return `<div class="ag"><div class="l"><b>${esc(a.nome)}</b><span class="badge ci">não agendado</span></div></div>`;
@@ -219,7 +368,8 @@ function desenharCmds(lista){
     const [cl,t] = ST[c.status] || ['ci',c.status];
     const p = c.parametros || {};
     const et = c.etapas && c.acao === 'rodar' ? ' · ' + c.etapas.map(x=>NOMES[x]||x).join(' → ') :
-               c.acao === 'agenda' ? ` · ${p.tarefa || ''} ${p.operacao === 'horario' ? '→ ' + p.hora : (p.operacao || '')}` : '';
+               c.acao === 'agenda' ? ` · ${p.tarefa || ''} ${p.operacao === 'horario' ? '→ ' + p.hora : (p.operacao || '')}` :
+               c.acao === 'tarefa' ? ' · ' + (TAREFA[p.tipo] || p.tipo) : '';
     return `<div class="cmd"><span class="badge ${cl}">${t}</span><div class="q">${esc(ACAO[c.acao]||c.acao)}${esc(et)}
       <small>${hora(c.criado_em)}${c.mensagem ? ' · ' + esc(c.mensagem) : ''}</small></div></div>`;
   }).join('') || '<div style="color:var(--suave);font-size:13px">Nenhum comando ainda.</div>';
